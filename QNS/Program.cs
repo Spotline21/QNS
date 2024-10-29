@@ -5,10 +5,12 @@ namespace QNS
 {
     class Program
     {
-        static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
 
+            AccountParser.Parse();
 
+            Console.ReadKey();
         }
     }
 

@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using AngleSharp;
 using AngleSharp.Dom;
+using QNS;
 
 namespace accountParser
 {
@@ -13,7 +14,7 @@ namespace accountParser
         private static readonly HttpClientHandler handler = new HttpClientHandler { UseCookies = true };
         private static readonly HttpClient Client = new HttpClient(handler); // создаю сессию
 
-        public static async Task Parse()
+        public static async Task <(string LoginLS, string PasswordLS, string FirstLastName, string MacAdressLS)> Parse()
         {
             Console.Write("Введите Номер ЛС Абонента:");
             string AccountNumber = Console.ReadLine();
@@ -31,7 +32,7 @@ namespace accountParser
             if (!loginResponse.IsSuccessStatusCode)
             {
                 Console.WriteLine("Ошибка Входа в GCDB.");
-                return;
+                return (null, null, null, null);
             }
 
             var searchUrl = $"https://gcdbviewer.matrixhome.net/usersearch.php?anumber={AccountNumber}&payments_invoices";
@@ -39,7 +40,7 @@ namespace accountParser
             if (!searchResponse.IsSuccessStatusCode)
             {
                 Console.WriteLine("Ошибка при поиске аккаунта.");
-                return;
+                return (null, null, null, null);
             }
 
             var htmlContent = await searchResponse.Content.ReadAsStringAsync();
@@ -58,6 +59,9 @@ namespace accountParser
             var loginElement = document.QuerySelector("#accounts-box > table > tbody > tr:nth-child(2) > td:nth-child(1) > span.click-select");
             var passwordElement = document.QuerySelector("#accounts-box > table > tbody > tr:nth-child(2) > td:nth-child(2) > span");
             var FirstLastElement = document.QuerySelector("#main > table:nth-child(7) > tbody > tr:nth-child(2) > td:nth-child(1) > div:nth-child(2) > div:nth-child(1) > h3");
+            var MacAdressElement = document.QuerySelector("#accounts-box > table > tbody > tr:nth-child(2) > td:nth-child(3) > span");
+
+
 
             for (int i = 0; i <= 100; i += 2) // Процент от 0 до 100
             {
@@ -71,22 +75,27 @@ namespace accountParser
             // Проверяем, найдены ли данные
             if (loginElement == null || passwordElement == null)
             {
-                Console.WriteLine("Не удалось найти логин или пароль.");
-                return;
+                Console.WriteLine("Не удалось найти логин/пароль/MAC-adress в странице абонента.");
+                return (null, null, null, null);
             }
 
             string LoginLS = loginElement.TextContent;
             string PasswordLS = passwordElement.TextContent;
             string FirstLastName = FirstLastElement.TextContent;
+            string MacAdressLS = MacAdressElement.TextContent;
 
-            Console.WriteLine("Данные подключения: " + FirstLastName + "\n\n");
+            Console.WriteLine("\nДанные подключения: " + FirstLastName + "\n\n");
             Console.WriteLine("Логин абонента: " + LoginLS);
             Console.WriteLine("Пароль по GCDB: " + PasswordLS);
+            Console.WriteLine("MAC адрес по GCDB: "+ MacAdressLS);
 
-            Console.ReadKey();
+            Console.WriteLine("\n\n");
+
+            System.Threading.Thread.Sleep(1500);
+            return (LoginLS, PasswordLS, FirstLastName, MacAdressLS);
         }
 
-        static void DisplayProgressBar(int percent)
+        static public void DisplayProgressBar(int percent)
         {
             int totalBlocks = 50; // Общее количество квадратов
             int filledBlocks = (int)(percent / 100.0 * totalBlocks); // Заполненные квадраты

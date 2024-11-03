@@ -51,7 +51,7 @@ namespace QNS
                 {
                     Console.Clear();
 
-                    await accountParser.AccountParser.Parse();
+                    await SNR_MD2.SetupRouter();
                 }
                 else if (keyInfo.Key == ConsoleKey.Q)
                 {

@@ -9,6 +9,7 @@ namespace QNS
         {
             await Commands.DrawGreetings();
             await Commands.MenuChanger();
+
         }
     }
 

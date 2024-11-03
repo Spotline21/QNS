@@ -7,10 +7,8 @@ namespace QNS
     {
         public static async Task Main(string[] args)
         {
-
-            AccountParser.Parse();
-
-            Console.ReadKey();
+            await Commands.DrawGreetings();
+            await Commands.MenuChanger();
         }
     }
 

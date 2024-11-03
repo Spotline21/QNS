@@ -1,35 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.IO;
+using System.Net.Http;
 using System.Threading.Tasks;
-
-using HtmlAgilityPack;
+using AngleSharp;
+using AngleSharp.Dom;
 
 namespace accountParser
 {
     public class AccountParser
     {
         private static readonly HttpClientHandler handler = new HttpClientHandler { UseCookies = true };
-
         private static readonly HttpClient Client = new HttpClient(handler); // создаю сессию
 
-        
-        public static async Task Parse() 
+        public static async Task Parse()
         {
-            
             Console.Write("Введите Номер ЛС Абонента:");
             string AccountNumber = Console.ReadLine();
             var loginUrl = "https://gcdbviewer.matrixhome.net/index.php";
-
 
             // ломимся на GCDB
             var loginData = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("login", "spotline"),
                 new KeyValuePair<string, string>("password", "zLUnBybz")
-            }
-            );
+            });
 
             var loginResponse = await Client.PostAsync(loginUrl, loginData);
 
@@ -48,35 +43,60 @@ namespace accountParser
             }
 
             var htmlContent = await searchResponse.Content.ReadAsStringAsync();
-            var htmlDoc = new HtmlDocument();
-            htmlDoc.LoadHtml(htmlContent);
 
+            // Сохраняем HTML-страницу в файл для проверки содержимого
+            //string filePath = Path.Combine(Directory.GetCurrentDirectory(), "page.html");
+            //await File.WriteAllTextAsync(filePath, htmlContent);
+            //Console.WriteLine($"HTML-страница сохранена в файл: {filePath}");
 
-            // Сохраняем HTML-страницу в файл
-            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "page.html");
-            await File.WriteAllTextAsync(filePath, htmlContent);
-            Console.WriteLine($"HTML-страница сохранена в файл: {filePath}");
-            // парсим базу
-            var loginNode = htmlDoc.DocumentNode.SelectSingleNode("/html/body/table/tbody/tr/td/table[1]/tbody/tr[1]/td/div[3]/table/tbody/tr[2]/td[1]/span[1]");
-            var passwordNode = htmlDoc.DocumentNode.SelectSingleNode("/html/body/table/tbody/tr/td/table[1]/tbody/tr[1]/td/div[3]/table/tbody/tr[2]/td[2]/span");
-            //var LastFirstNamesNode = htmlDoc.DocumentNode.SelectSingleNode("//*[@id=\"main\"]/table[1]/tbody/tr[2]/td[1]/div[1]/div[1]/h3");
+            // Парсим с помощью AngleSharp
+            var config = Configuration.Default;
+            var context = BrowsingContext.New(config);
+            var document = await context.OpenAsync(req => req.Content(htmlContent));
+
+            // Поиск логина и пароля с помощью CSS-селекторов
+            var loginElement = document.QuerySelector("#accounts-box > table > tbody > tr:nth-child(2) > td:nth-child(1) > span.click-select");
+            var passwordElement = document.QuerySelector("#accounts-box > table > tbody > tr:nth-child(2) > td:nth-child(2) > span");
+            var FirstLastElement = document.QuerySelector("#main > table:nth-child(7) > tbody > tr:nth-child(2) > td:nth-child(1) > div:nth-child(2) > div:nth-child(1) > h3");
+
+            for (int i = 0; i <= 100; i += 2) // Процент от 0 до 100
+            {
+                DisplayProgressBar(i);
+                await Task.Delay(5); // Имитация времени выполнения задачи
+            }
+
+            Console.WriteLine(); // Переход на новую строку после завершения
+            Console.WriteLine("Задача завершена!");
 
             // Проверяем, найдены ли данные
-            if (loginNode == null || passwordNode == null)
+            if (loginElement == null || passwordElement == null)
             {
                 Console.WriteLine("Не удалось найти логин или пароль.");
                 return;
             }
-            string LoginLS = loginNode.InnerText;
-            string PasswordLS = passwordNode.InnerText;
-            // string LFNames = LastFirstNamesNode.InnerText;
 
-            //Console.WriteLine("Зарегистрированно на: " + LFNames + "\n\n");
+            string LoginLS = loginElement.TextContent;
+            string PasswordLS = passwordElement.TextContent;
+            string FirstLastName = FirstLastElement.TextContent;
+
+            Console.WriteLine("Данные подключения: " + FirstLastName + "\n\n");
             Console.WriteLine("Логин абонента: " + LoginLS);
             Console.WriteLine("Пароль по GCDB: " + PasswordLS);
 
             Console.ReadKey();
         }
 
+        static void DisplayProgressBar(int percent)
+        {
+            int totalBlocks = 50; // Общее количество квадратов
+            int filledBlocks = (int)(percent / 100.0 * totalBlocks); // Заполненные квадраты
+
+            // Создаем строку с заполнением и пустыми квадратами
+            string progressBar = new string('█', filledBlocks) + new string('░', totalBlocks - filledBlocks);
+
+            // Выводим прогресс с процентом
+            Console.CursorLeft = 0; // Ставим курсор в начало строки
+            Console.Write($"[{progressBar}] {percent}%");
+        }
     }
 }
